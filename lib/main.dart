@@ -4,6 +4,7 @@ import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:plaid_flutter/plaid_flutter.dart';
@@ -26,13 +27,13 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: "Palid Demo",
+      title: "Plaid Demo",
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
       home: ChangeNotifierProvider(
         create: (context) => IdentityProvider(),
-        child: MyHomePage(title: "Palid"),
+        child: MyHomePage(title: "Plaid Demo"),
       ),
     );
   }
@@ -306,13 +307,78 @@ class _MyHomePageState extends State<MyHomePage> {
                     return Visibility(
                       visible: _showIdentity,
                       child: Container(
-                        padding: const EdgeInsets.all(10),
+                        width: MediaQuery.of(context).size.width * 0.85,
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                            border: Border.all(color: Colors.yellow, width: 2),
+                            gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Color(0xFFAF2AFF),
+                                  Color(0xFF28CAFB),
+                                ]),
                             borderRadius: BorderRadius.circular(10)),
                         child: Column(
                           children: [
-                            Text("${value.name}"),
+                            Text(
+                              "${value.name}".toUpperCase(),
+                              style: GoogleFonts.poppins(
+                                  color: Colors.white, fontSize: 20,
+                                decoration: TextDecoration.underline
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            SizedBox(
+                              height: 8,
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Column(
+                                    children: [
+                                      Text(
+                                        "\$ ${value.availableBalance}",
+                                        style: GoogleFonts.poppins(
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.white,
+                                            fontSize: 16),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      Text(
+                                        "Available Balance",
+                                        style: GoogleFonts.poppins(
+                                            fontWeight: FontWeight.w300,
+                                            color: Colors.white,
+                                            fontSize: 16),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  ),
+                                  Column(
+                                    children: [
+                                      Text(
+                                        "\$ ${value.currentBalance}",
+                                        style: GoogleFonts.poppins(
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.white,
+                                            fontSize: 16),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      Text(
+                                        "Current Balance",
+                                        style: GoogleFonts.poppins(
+                                            fontWeight: FontWeight.w300,
+                                            color: Colors.white,
+                                            fontSize: 16),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            )
                           ],
                         ),
                       ),
