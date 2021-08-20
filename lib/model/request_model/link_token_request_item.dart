@@ -4,12 +4,12 @@
 
 import 'dart:convert';
 
-RequestItem requestItemFromJson(String str) => RequestItem.fromJson(json.decode(str));
+LinkTokenRequestItem linkTokenRequestItemFromJson(String str) => LinkTokenRequestItem.fromJson(json.decode(str));
 
-String requestItemToJson(RequestItem data) => json.encode(data.toJson());
+String linkTokenRequestItemToJson(LinkTokenRequestItem data) => json.encode(data.toJson());
 
-class RequestItem {
-  RequestItem({
+class LinkTokenRequestItem {
+  LinkTokenRequestItem({
     required this.clientId,
     required this.secret,
     required this.user,
@@ -27,7 +27,7 @@ class RequestItem {
   String language;
   List<String> products;
 
-  factory RequestItem.fromJson(Map<String, dynamic> json) => RequestItem(
+  factory LinkTokenRequestItem.fromJson(Map<String, dynamic> json) => LinkTokenRequestItem(
     clientId: json["client_id"],
     secret: json["secret"],
     user: User.fromJson(json["user"]),

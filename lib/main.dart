@@ -7,8 +7,16 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:plaid_flutter/plaid_flutter.dart';
-import 'package:plaid_n_face/link_token_item.dart';
-import 'package:plaid_n_face/request_item.dart';
+import 'package:plaid_n_face/model/balance_item.dart' as balance;
+import 'package:plaid_n_face/model/identity_item.dart';
+import 'package:plaid_n_face/model/link_token_item.dart';
+import 'package:plaid_n_face/model/request_model/exchange_token_request_item.dart';
+import 'package:plaid_n_face/model/request_model/link_token_request_item.dart';
+import 'package:plaid_n_face/provider/identity_provider.dart';
+import 'package:provider/provider.dart';
+
+import 'model/exchange_token_item.dart';
+import 'model/request_model/identity_request_item.dart';
 
 void main() {
   runApp(MyApp());
@@ -22,7 +30,10 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(title: "Palid"),
+      home: ChangeNotifierProvider(
+        create: (context) => IdentityProvider(),
+        child: MyHomePage(title: "Palid"),
+      ),
     );
   }
 }
@@ -38,14 +49,13 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   late PlaidLink _plaidLinkToken;
-  LocalAuthentication localAuth = LocalAuthentication();
-  _SupportState _supportState = _SupportState.unknown;
-  bool? _canCheckBiometrics;
-  List<BiometricType>? _availableBiometrics;
+  LocalAuthentication _localAuth = LocalAuthentication();
   String _authorized = 'Not Authorized';
-  bool _isAuthenticating = false;
+  bool _authenticated = false;
+  late IdentityProvider _identityProvider;
+  bool _showIdentity = false;
 
-  Future<Map<String, dynamic>> fetchLinkToken() async {
+  void fetchLinkToken() async {
     Map<String, String> heads = {
       'Content-Type': 'application/json',
       'Accept': '*/*',
@@ -59,12 +69,12 @@ class _MyHomePageState extends State<MyHomePage> {
       "language": "en",
       "products": ["auth"]
     };
-    RequestItem requestItem = RequestItem.fromJson(requestData);
-    var response = await post(
-            Uri.parse("https://sandbox.plaid.com/link/token/create"),
-            headers: heads,
-            body: jsonEncode(requestItem))
+    LinkTokenRequestItem requestItem =
+        LinkTokenRequestItem.fromJson(requestData);
+    await post(Uri.parse("https://sandbox.plaid.com/link/token/create"),
+            headers: heads, body: jsonEncode(requestItem))
         .then((value) {
+      _identityProvider.setLoading(false);
       if (value.statusCode == 200) {
         LinkTokenItem item = LinkTokenItem.fromJson(jsonDecode(value.body));
 
@@ -80,135 +90,175 @@ class _MyHomePageState extends State<MyHomePage> {
         );
 
         _plaidLinkToken.open();
-        log(item.toJson().toString(), name: "item");
-        return value;
+        log(item.toJson().toString(), name: "LinkToken");
       } else {
         throw Exception('Failed to generate link token.');
       }
     }).onError((error, stackTrace) {
+      _identityProvider.setLoading(false);
       log(error.toString(), name: "error");
       log(stackTrace.toString(), name: "stackTrace");
       throw Exception('Failed to generate link token.');
     });
+  }
+
+  void fetchAccessToken(String publicToken) async {
+    Map<String, String> heads = {
+      'Content-Type': 'application/json',
+      'Accept': '*/*',
+    };
+    Map<String, dynamic> requestData = {
+      "client_id": "611de248ad468b0010a07461",
+      "secret": "db784d78c6b690cf8d75c441ab1755",
+      "public_token": publicToken
+    };
+    ExchangeTokenRequestItem requestItem =
+        ExchangeTokenRequestItem.fromJson(requestData);
+    await post(
+            Uri.parse("https://sandbox.plaid.com/item/public_token/exchange"),
+            headers: heads,
+            body: jsonEncode(requestItem))
+        .then((value) {
+      if (value.statusCode == 200) {
+        ExchangeTokenItem item =
+            ExchangeTokenItem.fromJson(jsonDecode(value.body));
+
+        log(item.toJson().toString(), name: "ExchangeToken");
+        fetchIdentity(item.accessToken);
+      } else {
+        throw Exception('Failed to get access token.');
+      }
+    }).onError((error, stackTrace) {
+      log(error.toString(), name: "error");
+      log(stackTrace.toString(), name: "stackTrace");
+      throw Exception('Failed to get access token.');
+    });
+  }
+
+  Future<Map<String, dynamic>> fetchAccBalance(String accessToken) async {
+    Map<String, String> heads = {
+      'Content-Type': 'application/json',
+      'Accept': '*/*',
+    };
+    Map<String, dynamic> requestData = {
+      "client_id": "611de248ad468b0010a07461",
+      "secret": "db784d78c6b690cf8d75c441ab1755",
+      "access_token": accessToken
+    };
+    IdentityRequestItem requestItem = IdentityRequestItem.fromJson(requestData);
+    var response = await post(
+            Uri.parse("https://sandbox.plaid.com/accounts/balance/get"),
+            headers: heads,
+            body: jsonEncode(requestItem))
+        .then((value) {
+      if (value.statusCode == 200) {
+        balance.BalanceItem item =
+            balance.BalanceItem.fromJson(jsonDecode(value.body));
+
+        log(item.toJson().toString(), name: "Acc Balance");
+        return value;
+      } else {
+        throw Exception('Failed to get balance.');
+      }
+    }).onError((error, stackTrace) {
+      log(error.toString(), name: "error");
+      log(stackTrace.toString(), name: "stackTrace");
+      throw Exception('Failed to get balance.');
+    });
     return {"response": response};
+  }
+
+  void fetchIdentity(String accessToken) async {
+    Map<String, String> heads = {
+      'Content-Type': 'application/json',
+      'Accept': '*/*',
+    };
+    Map<String, dynamic> requestData = {
+      "client_id": "611de248ad468b0010a07461",
+      "secret": "db784d78c6b690cf8d75c441ab1755",
+      "access_token": accessToken
+    };
+    IdentityRequestItem requestItem = IdentityRequestItem.fromJson(requestData);
+    await post(Uri.parse("https://sandbox.plaid.com/identity/get"),
+            headers: heads, body: jsonEncode(requestItem))
+        .then((value) {
+      _identityProvider.setLoading(false);
+      if (value.statusCode == 200) {
+        IdentityItem item = IdentityItem.fromJson(jsonDecode(value.body));
+
+        log(item.toJson().toString(), name: "AccIdentity");
+        var account =
+            item.accounts.firstWhere((account) => account.subtype == "savings");
+        showData(account);
+
+        _showIdentity = true;
+        _identityProvider.setAccountLinked(true);
+        _identityProvider.setIdentity(item);
+      } else {
+        throw Exception('Failed to get balance.');
+      }
+    }).onError((error, stackTrace) {
+      _identityProvider.setLoading(false);
+      log(error.toString(), name: "error");
+      log(stackTrace.toString(), name: "stackTrace");
+      throw Exception('Failed to get balance.');
+    });
   }
 
   @override
   void initState() {
     super.initState();
-    localAuth.isDeviceSupported().then(
-          (isSupported) => setState(() => _supportState = isSupported
-          ? _SupportState.supported
-          : _SupportState.unsupported),
-    );
-  }
-
-  Future<void> _checkBiometrics() async {
-    late bool canCheckBiometrics;
-    try {
-      canCheckBiometrics = await localAuth.canCheckBiometrics;
-    } on PlatformException catch (e) {
-      canCheckBiometrics = false;
-      print(e);
-    }
-    if (!mounted) return;
-
-    setState(() {
-      _canCheckBiometrics = canCheckBiometrics;
-    });
-  }
-
-  Future<void> _getAvailableBiometrics() async {
-    late List<BiometricType> availableBiometrics;
-    try {
-      availableBiometrics = await localAuth.getAvailableBiometrics();
-    } on PlatformException catch (e) {
-      availableBiometrics = <BiometricType>[];
-      print(e);
-    }
-    if (!mounted) return;
-
-    setState(() {
-      _availableBiometrics = availableBiometrics;
-    });
-  }
-
-  Future<void> _authenticate() async {
-    bool authenticated = false;
-    try {
-      setState(() {
-        _isAuthenticating = true;
-        _authorized = 'Authenticating';
-      });
-      authenticated = await localAuth.authenticate(
-          localizedReason: 'Let OS determine authentication method',
-          useErrorDialogs: true,
-          stickyAuth: true);
-      setState(() {
-        _isAuthenticating = false;
-      });
-    } on PlatformException catch (e) {
-      print(e);
-      setState(() {
-        _isAuthenticating = false;
-        _authorized = "Error - ${e.message}";
-      });
-      return;
-    }
-    if (!mounted) return;
-
-    setState(
-            () => _authorized = authenticated ? 'Authorized' : 'Not Authorized');
+    _identityProvider = Provider.of<IdentityProvider>(context, listen: false);
+    _localAuth.isDeviceSupported().then(
+          (isSupported) => setState(() => isSupported
+              ? _SupportState.supported
+              : _SupportState.unsupported),
+        );
+    _authenticateWithBiometrics();
   }
 
   Future<void> _authenticateWithBiometrics() async {
-    bool authenticated = false;
     try {
       setState(() {
-        _isAuthenticating = true;
         _authorized = 'Authenticating';
       });
-      authenticated = await localAuth.authenticate(
+      _authenticated = await _localAuth.authenticate(
           localizedReason:
-          'Scan your fingerprint (or face or whatever) to authenticate',
+              'Scan your fingerprint (or face or whatever) to authenticate',
           useErrorDialogs: true,
           stickyAuth: true,
           biometricOnly: true);
       setState(() {
-        _isAuthenticating = false;
         _authorized = 'Authenticating';
       });
     } on PlatformException catch (e) {
       print(e);
       setState(() {
-        _isAuthenticating = false;
         _authorized = "Error - ${e.message}";
       });
       return;
     }
     if (!mounted) return;
 
-    final String message = authenticated ? 'Authorized' : 'Not Authorized';
+    final String message =
+        _authenticated ? 'Biometrics Authorized' : 'Not Authorized';
     setState(() {
       _authorized = message;
     });
   }
 
-  void _cancelAuthentication() async {
-    await localAuth.stopAuthentication();
-    setState(() => _isAuthenticating = false);
-  }
-
   void _onSuccessCallback(String publicToken, LinkSuccessMetadata metadata) {
-    print("onSuccess: $publicToken, metadata: ${metadata.description()}");
+    _identityProvider.setLoading(true);
+    log(metadata.description(), name: "onSuccess: $publicToken");
+    fetchAccessToken(publicToken);
   }
 
   void _onEventCallback(String event, LinkEventMetadata metadata) {
-    print("onEvent: $event, metadata: ${metadata.description()}");
+    log(metadata.description(), name: "onEvent: $event");
   }
 
   void _onExitCallback(LinkError? error, LinkExitMetadata metadata) {
-    print("onExit metadata: ${metadata.description()}");
+    log(metadata.description(), name: "onExit metadata");
 
     if (error != null) {
       print("onExit error: ${error.description()}");
@@ -217,84 +267,87 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // fetchLinkToken();
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
       ),
-      body: ListView(
-        padding: const EdgeInsets.only(top: 30),
+      body: Stack(
         children: [
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (_supportState == _SupportState.unknown)
-                CircularProgressIndicator()
-              else if (_supportState == _SupportState.supported)
-                Text("This device is supported")
-              else
-                Text("This device is not supported"),
-              Divider(height: 100),
-              Text('Can check biometrics: $_canCheckBiometrics\n'),
-              ElevatedButton(
-                child: const Text('Check biometrics'),
-                onPressed: _checkBiometrics,
-              ),
-              Divider(height: 100),
-              Text('Available biometrics: $_availableBiometrics\n'),
-              ElevatedButton(
-                child: const Text('Get available biometrics'),
-                onPressed: _getAvailableBiometrics,
-              ),
-              Divider(height: 100),
-              Text('Current State: $_authorized\n'),
-              (_isAuthenticating)
-                  ? ElevatedButton(
-                onPressed: _cancelAuthentication,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text("Cancel Authentication"),
-                    Icon(Icons.cancel),
-                  ],
-                ),
-              )
-                  : Column(
-                children: [
-                  ElevatedButton(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('Authenticate'),
-                        Icon(Icons.perm_device_information),
-                      ],
-                    ),
-                    onPressed: _authenticate,
-                  ),
-                  ElevatedButton(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(_isAuthenticating
-                            ? 'Cancel'
-                            : 'Authenticate: biometrics only'),
-                        Icon(Icons.fingerprint),
-                      ],
-                    ),
+          Container(
+            width: double.infinity,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text('Current State: $_authorized\n'),
+                Visibility(
+                  visible: !_authenticated,
+                  child: ElevatedButton(
+                    child: Text("Retry Authentication"),
                     onPressed: _authenticateWithBiometrics,
                   ),
-                ],
-              ),
-            ],
+                ),
+                Visibility(
+                    visible: _authenticated,
+                    child: Consumer<IdentityProvider>(
+                      builder: (context, value, child) {
+                        return ElevatedButton(
+                          child: Text(value.accountLinked
+                              ? "Linked"
+                              : "Link with Bank Account"),
+                          onPressed:
+                              value.accountLinked ? null : fetchLinkToken,
+                        );
+                      },
+                    )),
+                SizedBox(height: 35),
+                Consumer<IdentityProvider>(
+                  builder: (context, value, child) {
+                    return Visibility(
+                      visible: _showIdentity,
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                            border: Border.all(color: Colors.yellow, width: 2),
+                            borderRadius: BorderRadius.circular(10)),
+                        child: Column(
+                          children: [
+                            Text("${value.name}"),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          Consumer<IdentityProvider>(
+            builder: (context, value, child) {
+              return Visibility(
+                visible: value.loading,
+                child: Container(
+                  color: Colors.black45,
+                  child: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),
     );
   }
+
+  void showData(Account account) {
+    log("${account.balances.current}", name: "current");
+    log("${account.balances.available}", name: "available");
+    log("${account.owners[0].names[0]}", name: "name");
+  }
 }
 
 enum _SupportState {
-  unknown,
   supported,
   unsupported,
 }
