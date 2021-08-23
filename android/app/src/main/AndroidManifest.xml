@@ -6,7 +6,7 @@
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
 
     <application
-        android:label="plaid_n_face"
+        android:label="test_app1"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"

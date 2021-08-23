@@ -2,6 +2,8 @@ PODS:
   - Flutter (1.0.0)
   - local_auth (0.0.1):
     - Flutter
+  - path_provider (0.0.1):
+    - Flutter
   - Plaid (2.1.3)
   - plaid_flutter (0.0.1):
     - Flutter
@@ -10,6 +12,7 @@ PODS:
 DEPENDENCIES:
   - Flutter (from `Flutter`)
   - local_auth (from `.symlinks/plugins/local_auth/ios`)
+  - path_provider (from `.symlinks/plugins/path_provider/ios`)
   - plaid_flutter (from `.symlinks/plugins/plaid_flutter/ios`)
 
 SPEC REPOS:
@@ -21,12 +24,15 @@ EXTERNAL SOURCES:
     :path: Flutter
   local_auth:
     :path: ".symlinks/plugins/local_auth/ios"
+  path_provider:
+    :path: ".symlinks/plugins/path_provider/ios"
   plaid_flutter:
     :path: ".symlinks/plugins/plaid_flutter/ios"
 
 SPEC CHECKSUMS:
   Flutter: 434fef37c0980e73bb6479ef766c45957d4b510c
   local_auth: 25938960984c3a7f6e3253e3f8d962fdd16852bd
+  path_provider: abfe2b5c733d04e238b0d8691db0cfd63a27a93c
   Plaid: f55c6acdc249245c6778a4045757eb4e839cca61
   plaid_flutter: bde997391eb38042675a68ceaa74e6307c626b98
 

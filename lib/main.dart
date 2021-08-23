@@ -15,6 +15,7 @@ import 'package:plaid_n_face/model/request_model/exchange_token_request_item.dar
 import 'package:plaid_n_face/model/request_model/link_token_request_item.dart';
 import 'package:plaid_n_face/provider/identity_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import 'model/exchange_token_item.dart';
 import 'model/request_model/identity_request_item.dart';
@@ -27,13 +28,13 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: "Plaid Demo",
+      title: "test_app1",
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
       home: ChangeNotifierProvider(
         create: (context) => IdentityProvider(),
-        child: MyHomePage(title: "Plaid Demo"),
+        child: MyHomePage(title: "test_app1"),
       ),
     );
   }
@@ -306,81 +307,108 @@ class _MyHomePageState extends State<MyHomePage> {
                   builder: (context, value, child) {
                     return Visibility(
                       visible: _showIdentity,
-                      child: Container(
-                        width: MediaQuery.of(context).size.width * 0.85,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  Color(0xFFAF2AFF),
-                                  Color(0xFF28CAFB),
-                                ]),
-                            borderRadius: BorderRadius.circular(10)),
-                        child: Column(
-                          children: [
-                            Text(
-                              "${value.name}".toUpperCase(),
-                              style: GoogleFonts.poppins(
-                                  color: Colors.white, fontSize: 20,
-                                decoration: TextDecoration.underline
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            SizedBox(
-                              height: 8,
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Column(
-                                    children: [
-                                      Text(
-                                        "\$ ${value.availableBalance}",
-                                        style: GoogleFonts.poppins(
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.white,
-                                            fontSize: 16),
-                                        textAlign: TextAlign.center,
+                      child: Column(
+                        children: [
+                          Container(
+                            width: MediaQuery.of(context).size.width * 0.85,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      Color(0xFFAF2AFF),
+                                      Color(0xFF28CAFB),
+                                    ]),
+                                borderRadius: BorderRadius.circular(10)),
+                            child: Column(
+                              children: [
+                                QrImage(
+                                  data: value.identity,
+                                  size: 250,
+                                  gapless: true,
+                                  foregroundColor: Colors.white,
+                                  errorStateBuilder: (context, error) {
+                                    return Container(
+                                      child: Center(
+                                        child: Text(
+                                          "Uh oh! Something went wrong...",
+                                          textAlign: TextAlign.center,
+                                        ),
                                       ),
-                                      Text(
-                                        "Available Balance",
-                                        style: GoogleFonts.poppins(
-                                            fontWeight: FontWeight.w300,
-                                            color: Colors.white,
-                                            fontSize: 16),
-                                        textAlign: TextAlign.center,
+                                    );
+                                  },
+                                ),
+                                SizedBox(
+                                  height: 8,
+                                ),
+                                Text(
+                                  "${value.name}".toUpperCase(),
+                                  style: GoogleFonts.poppins(
+                                      color: Colors.white,
+                                      fontSize: 20,
+                                      decoration: TextDecoration.underline),
+                                  textAlign: TextAlign.center,
+                                ),
+                                SizedBox(
+                                  height: 8,
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Column(
+                                        children: [
+                                          Text(
+                                            "\$ ${value.availableBalance}",
+                                            style: GoogleFonts.poppins(
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white,
+                                                fontSize: 16),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                          Text(
+                                            "Available Balance",
+                                            style: GoogleFonts.poppins(
+                                                fontWeight: FontWeight.w300,
+                                                color: Colors.white,
+                                                fontSize: 16),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ],
+                                      ),
+                                      Column(
+                                        children: [
+                                          Text(
+                                            "\$ ${value.currentBalance}",
+                                            style: GoogleFonts.poppins(
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white,
+                                                fontSize: 16),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                          Text(
+                                            "Current Balance",
+                                            style: GoogleFonts.poppins(
+                                                fontWeight: FontWeight.w300,
+                                                color: Colors.white,
+                                                fontSize: 16),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),
-                                  Column(
-                                    children: [
-                                      Text(
-                                        "\$ ${value.currentBalance}",
-                                        style: GoogleFonts.poppins(
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.white,
-                                            fontSize: 16),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                      Text(
-                                        "Current Balance",
-                                        style: GoogleFonts.poppins(
-                                            fontWeight: FontWeight.w300,
-                                            color: Colors.white,
-                                            fontSize: 16),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            )
-                          ],
-                        ),
+                                )
+                              ],
+                            ),
+                          ),
+                          SizedBox(
+                            height: 10,
+                          ),
+                        ],
                       ),
                     );
                   },

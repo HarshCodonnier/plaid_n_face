@@ -6,11 +6,15 @@ class IdentityProvider with ChangeNotifier {
   late IdentityItem _identityItem;
   Account? _account;
   bool _accountLinked = false;
+  String _identity = "";
 
   bool get loading => _loading;
+
   bool get accountLinked => _accountLinked;
 
   IdentityItem get item => _identityItem;
+
+  String get identity => _identity;
 
   void setLoading(bool loading) {
     _loading = loading;
@@ -26,6 +30,8 @@ class IdentityProvider with ChangeNotifier {
     _identityItem = identityItem;
     _account = _identityItem.accounts
         .firstWhere((account) => account.subtype == "savings");
+    _identity =
+        "Name: $name\nAvailable Balance: $availableBalance\nCurrent Balance: $currentBalance";
     notifyListeners();
   }
 
