@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import 'package:plaid_n_face/model/identity_item.dart';
 
 class IdentityProvider with ChangeNotifier {
@@ -23,7 +24,11 @@ class IdentityProvider with ChangeNotifier {
 
   void setAccountLinked(bool accountLinked) {
     _accountLinked = accountLinked;
-    notifyListeners();
+  }
+
+  void setAccessToken(String accessToken) {
+    var plaidBox = Hive.box("plaid");
+    plaidBox.put("plaid_access_token", accessToken);
   }
 
   void setIdentity(IdentityItem identityItem) {
@@ -45,5 +50,12 @@ class IdentityProvider with ChangeNotifier {
 
   String get name {
     return _account == null ? "" : _account!.owners[0].names[0];
+  }
+
+  String get plaidAccessToken {
+    var plaidBox = Hive.box("plaid");
+    return plaidBox.get("plaid_access_token") == null
+        ? ""
+        : plaidBox.get("plaid_access_token");
   }
 }

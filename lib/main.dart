@@ -5,6 +5,7 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:plaid_flutter/plaid_flutter.dart';
@@ -20,7 +21,10 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'model/exchange_token_item.dart';
 import 'model/request_model/identity_request_item.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Hive.initFlutter();
+  await Hive.openBox("plaid");
   runApp(MyApp());
 }
 
@@ -56,6 +60,18 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _authenticated = false;
   late IdentityProvider _identityProvider;
   bool _showIdentity = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _identityProvider = Provider.of<IdentityProvider>(context, listen: false);
+    _localAuth.isDeviceSupported().then(
+          (isSupported) => setState(() => isSupported
+              ? _SupportState.supported
+              : _SupportState.unsupported),
+        );
+    _authenticateWithBiometrics();
+  }
 
   void fetchLinkToken() async {
     Map<String, String> heads = {
@@ -126,6 +142,7 @@ class _MyHomePageState extends State<MyHomePage> {
             ExchangeTokenItem.fromJson(jsonDecode(value.body));
 
         log(item.toJson().toString(), name: "ExchangeToken");
+        _identityProvider.setAccessToken(item.accessToken);
         fetchIdentity(item.accessToken);
       } else {
         throw Exception('Failed to get access token.');
@@ -207,18 +224,6 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _identityProvider = Provider.of<IdentityProvider>(context, listen: false);
-    _localAuth.isDeviceSupported().then(
-          (isSupported) => setState(() => isSupported
-              ? _SupportState.supported
-              : _SupportState.unsupported),
-        );
-    _authenticateWithBiometrics();
-  }
-
   Future<void> _authenticateWithBiometrics() async {
     try {
       setState(() {
@@ -247,6 +252,13 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       _authorized = message;
     });
+    if (_authenticated) {
+      if (_identityProvider.plaidAccessToken.isNotEmpty) {
+        _identityProvider.setLoading(true);
+        _identityProvider.setAccountLinked(true);
+        fetchIdentity(_identityProvider.plaidAccessToken);
+      }
+    }
   }
 
   void _onSuccessCallback(String publicToken, LinkSuccessMetadata metadata) {
@@ -327,7 +339,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                   data: value.identity,
                                   size: 250,
                                   gapless: true,
-                                  foregroundColor: Colors.white,
+                                  backgroundColor: Colors.white,
                                   errorStateBuilder: (context, error) {
                                     return Container(
                                       child: Center(
